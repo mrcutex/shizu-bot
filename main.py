@@ -278,6 +278,158 @@ async def handle_quote(client, message):
         # Clean up image file if necessary
         os.remove(image_path)
 
+reactions = ["👍", "😂", "😊", "🎉", "👏", "❤️"]
+
+@app.on_message(filters.command("start_chat"))
+async def start_chat(client, message):
+    try:
+        members = await app.get_chat_members(message.chat.id)
+        # Ensure there are members to choose from
+        if not members:
+            await message.reply("No members found in the chat.")
+            return
+
+        # Select a random member from the chat
+        selected_member = random.choice(members).user
+        user_mention = selected_member.mention
+        prompt = f"Hey {user_mention}, how’s it going today?"
+
+        # Send a message tagging the selected member
+        await message.reply(prompt)
+
+        # Store or start a conversation with this member
+        user_id = selected_member.id
+        if user_id not in chat_sessions:
+            chat_sessions[user_id] = model.start_chat()
+
+        # Send a message using AI
+        chat_session = chat_sessions[user_id]
+        response = chat_session.send_message(prompt)
+        await message.reply(response.text)
+
+    except Exception as e:
+        logger.error(f"Error in start_chat: {e}")
+        await message.reply("An error occurred while trying to start a chat.")
+        ""
+
+# React to messages automatically
+@app.on_message(filters.text & ~filters.command(['start', 'help']))  # Exclude specific commands
+async def auto_react(client, message):
+    try:
+        user_message = message.text.lower()
+
+        # Respond with predefined reactions
+        if "hello" in user_message or "hi" in user_message:
+            await message.reply(random.choice(reactions))  # Random reaction emoji
+        elif "thanks" in user_message or "thank you" in user_message:
+            await message.reply("You're welcome! 😊")
+
+        # Check for creation-related questions
+        creation_keywords = [
+            "who created you", "who made you", "who are you",
+            "kya tumhe kisne banaya", "tumhe kisne banaya", "aapko kisne banaya"
+            "kon ho", "Kon ho", "Tum Kon ho", "Who're you"
+        ]
+        if any(keyword in user_message for keyword in creation_keywords):
+            await message.reply("Shizu")
+            return
+            
+        shizu_keywords = [
+            "Shizu Kon Hai", "Shizu kon hi", "shizu kon hai",
+            "Shizu kon hain", "Shizu kaun hai", "Who's shizu"
+            "who is shizu" "Who is Shizu", "Who shizu", "Shizu", "shizu"
+        ]
+        if any(keyword in user_message for keyword in shizu_keywords):
+            await message.reply("She's my creator")
+            return   
+
+        user_id = message.from_user.id
+        if user_id not in chat_sessions:
+            chat_sessions[user_id] = model.start_chat()
+
+        chat_session = chat_sessions[user_id]
+        response = chat_session.send_message(user_message)
+        await message.reply(response.text)
+
+    except Exception as e:
+        logger.error(f"Error in auto_react: {e}")
+        await message.reply("An error occurred while processing your message.")
+
+
+# Store popular meme templates in a list
+meme_templates = []
+
+# Fetch the meme templates at the start
+def fetch_meme_templates():
+    url = "https://api.imgflip.com/get_memes"
+    response = requests.get(url)
+    data = response.json()
+    if data['success']:
+        global meme_templates
+        meme_templates = data['data']['memes']
+    else:
+        meme_templates = []
+
+fetch_meme_templates()  # Fetch the meme templates when the bot starts
+
+# Meme Generator Command
+@app.on_message(filters.command("memeg"))
+async def meme_generator(client, message):
+    try:
+        # Ensure the message contains the top and bottom text
+        if len(message.command) < 2:
+            await message.reply("Usage: /meme <top_text> | <bottom_text>")
+            return
+
+        # Extract the text without the /meme command
+        text = message.text[len("/meme "):].strip()
+
+        # Check if there is a "|" separator for top and bottom text
+        if '|' not in text:
+            await message.reply("Please use the format: /meme <top_text> | <bottom_text>")
+            return
+
+        # Split top and bottom text
+        top_text, bottom_text = text.split("|", 1)
+        
+        # Trim any extra spaces
+        top_text = top_text.strip()
+        bottom_text = bottom_text.strip()
+
+        # API credentials (Get from imgflip)
+        username = 'CUTEX'
+        password = 'cutexmods2452'
+
+        # Randomly select a meme template from the fetched list
+        if not meme_templates:
+            await message.reply("Sorry, I don't have any meme templates available.")
+            return
+        template = random.choice(meme_templates)
+        template_id = template['id']  # Get the ID of the selected template
+
+        # Meme API request
+        url = "https://api.imgflip.com/caption_image"
+        params = {
+            'template_id': template_id,
+            'username': username,
+            'password': password,
+            'text0': top_text,
+            'text1': bottom_text
+        }
+
+        response = requests.post(url, params=params)
+        data = response.json()
+
+        if data['success']:
+            meme_url = data['data']['url']
+            await message.reply_photo(photo=meme_url)
+        else:
+            await message.reply("Sorry, I couldn't generate a meme.")
+    except Exception as e:
+        await message.reply(f"Error: {e}")
+        
+
+
 
 # Start the bot
 async def main():
