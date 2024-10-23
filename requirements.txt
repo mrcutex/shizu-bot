@@ -1,0 +1,6 @@
+pyrogram
+pytz
+Pillow
+requests
+google-generativeai
+praw
