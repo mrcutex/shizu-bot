@@ -14,9 +14,9 @@ from io import BytesIO
 import os
 
 
-api_id = 27165689
-api_hash = "ea4431c5ed796781792d5ac5af232d73"
-bot_token = "7758736469:AAGR6GA6GtS4yogi89dQ27iVt6fMc3oTvSU"
+api_id = os.getenv('API_ID')
+api_hash = os.getenv('API_HASH')
+bot_token = os.getenv('BOT_TOKEN')
 
 app = Client("my_bot", api_id=api_id, api_hash=api_hash, bot_token=bot_token)
 
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 local_tz = pytz.timezone('Asia/Kolkata')
 
 # Configure Gemini API
-GEMINI_API_KEY = 'AIzaSyDd-DkS_Drw2LhKhQOW2Gw7AJNN9uWYFwc'
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 genai.configure(api_key=GEMINI_API_KEY)
 
 # Generative AI model (Gemini)
